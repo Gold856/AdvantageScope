@@ -481,58 +481,56 @@ export default class Sidebar {
     fieldElementContainer.appendChild(valueElement);
     valueElement.classList.add("field-value");
     fieldElementContainer.style.setProperty("--value-width", "0px");
+    const observer = new IntersectionObserver((entries) => {
+      for (let entry of entries) {
+        let expanded = entry.intersectionRatio > 0.5;
+        let onScreen = entry.intersectionRatio > 0.5;
+        if (field.fullKey !== null) {
+          let isActive = false;
+          let type = window.log.getType(field.fullKey);
+          let structuredType = window.log.getStructuredType(field.fullKey);
+          let wpilibType = window.log.getWpilibType(field.fullKey);
 
-    // Active fields callback
-    this.activeFieldCallbacks.push(() => {
-      let rect = fieldElement.getBoundingClientRect();
-      let expanded = rect.height > 0;
-      let onScreen = rect.height > 0 && rect.width > 0 && rect.top >= -rect.height && rect.top <= window.innerHeight;
+          // Active if expanded and array or structured
+          if (
+            expanded &&
+            (type === LoggableType.BooleanArray ||
+              type === LoggableType.NumberArray ||
+              type === LoggableType.StringArray ||
+              (type !== LoggableType.Empty && structuredType !== null) ||
+              (type === LoggableType.Raw && wpilibType !== null && CustomSchemas.has(wpilibType)))
+          ) {
+            isActive = true;
+          }
 
-      if (field.fullKey !== null) {
-        let isActive = false;
-        let type = window.log.getType(field.fullKey);
-        let structuredType = window.log.getStructuredType(field.fullKey);
-        let wpilibType = window.log.getWpilibType(field.fullKey);
+          // Active if number, boolean, or string and on screen
+          if (
+            onScreen &&
+            (type === LoggableType.Number || type === LoggableType.Boolean || type === LoggableType.String)
+          ) {
+            isActive = true;
+          }
 
-        // Active if expanded and array or structured
-        if (
-          expanded &&
-          (type === LoggableType.BooleanArray ||
-            type === LoggableType.NumberArray ||
-            type === LoggableType.StringArray ||
-            (type !== LoggableType.Empty && structuredType !== null) ||
-            (type === LoggableType.Raw && wpilibType !== null && CustomSchemas.has(wpilibType)))
-        ) {
-          isActive = true;
+          // Apply active status
+          if (isActive) {
+            this.activeFields.add(field.fullKey);
+          } else {
+            this.activeFields.delete(field.fullKey);
+          }
         }
 
-        // Active if number, boolean, or string and on screen
-        if (
-          onScreen &&
-          (type === LoggableType.Number || type === LoggableType.Boolean || type === LoggableType.String)
-        ) {
-          isActive = true;
-        }
-
-        // Apply active status
-        if (isActive) {
-          this.activeFields.add(field.fullKey);
-        } else {
-          this.activeFields.delete(field.fullKey);
-        }
-      }
-
-      // Add type subkey if available
-      if (TYPE_KEY in field.children && field.children[TYPE_KEY].fullKey !== null) {
-        let typeKey = field.children[TYPE_KEY].fullKey;
-        if (expanded) {
-          this.activeFields.add(typeKey);
-        } else {
-          this.activeFields.delete(typeKey);
+        // Add type subkey if available
+        if (TYPE_KEY in field.children && field.children[TYPE_KEY].fullKey !== null) {
+          let typeKey = field.children[TYPE_KEY].fullKey;
+          if (expanded) {
+            this.activeFields.add(typeKey);
+          } else {
+            this.activeFields.delete(typeKey);
+          }
         }
       }
     });
-
+    observer.observe(fieldElement);
     // Add icons
     let closedIcon = this.ICON_TEMPLATES.children[0].cloneNode(true) as HTMLElement;
     let openIcon = this.ICON_TEMPLATES.children[1].cloneNode(true) as HTMLElement;
